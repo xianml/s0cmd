@@ -119,12 +119,16 @@ func (d *Downloader) downloadPart(ctx context.Context, presignedURL string, star
 		cmd := exec.CommandContext(ctx, "curl", "--silent", "--show-error", "--fail", "--output", "-", "--range", fmt.Sprintf("%d-%d", start, end), presignedURL) // nolint:gosec
 		cmd.Stderr = &stderr
 		cmd.Stdout = pw
+		start_t := time.Now()
 		if err := cmd.Run(); err != nil {
 			pw.CloseWithError(errors.Wrapf(err, "failed to run command: %s, stderr: %s", stringifyCmd(cmd), stderr.String()))
 		}
+		fmt.Printf("Part [%v, %v] downloaded in %.2f seconds\n", start, end, time.Since(start_t).Seconds())
 	}()
 
 	buf := make([]byte, end-start+1)
+
+	start_t := time.Now()
 	for {
 		n, err := pr.Read(buf)
 		if err != nil {
@@ -139,7 +143,7 @@ func (d *Downloader) downloadPart(ctx context.Context, presignedURL string, star
 		}
 		start += int64(n)
 	}
-
+	fmt.Printf("Part [%v, %v] written to file in %.2f seconds\n", start, end, time.Since(start_t).Seconds())
 	return nil
 }
 
