@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ncw/directio"
 	"github.com/pkg/errors"
 	"github.com/xianml/s0cmd/internal/s3"
 	"github.com/xianml/s0cmd/internal/writter"
@@ -38,7 +39,11 @@ func (d *Downloader) Download(ctx context.Context, presignedURL string) error {
 	}
 
 	// Create output file
-	file, err := os.Create(d.Output)
+	// file, err := os.OpenFile(d.Output, os.O_CREATE, 0644)
+	// if err != nil {
+	// 	return errors.Wrap(err, "failed to create target file")
+	// }
+	file, err := directio.OpenFile(d.Output, os.O_CREATE, 0644)
 	if err != nil {
 		return errors.Wrap(err, "failed to create target file")
 	}
