@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/xianml/s0cmd/internal/s3"
@@ -52,9 +53,8 @@ func (d *Downloader) Download(ctx context.Context, presignedURL string) error {
 	}
 
 	fmt.Println("Downloading...")
-	// print the real parallelism
 	d.Parallelism = len(ranges)
-
+	startTime := time.Now()
 	var wg sync.WaitGroup
 	for i := 0; i < d.Parallelism; i++ {
 		wg.Add(1)
@@ -69,6 +69,14 @@ func (d *Downloader) Download(ctx context.Context, presignedURL string) error {
 		}(start_cp, end_cp, part_cp)
 	}
 	wg.Wait()
+
+	duration := time.Since(startTime)
+	// Convert bytes to megabits (bytes * 8 / 1024 / 1024)
+	megabits := float64(size) * 8 / 1024 / 1024
+	// Calculate MB/s
+	mbps := megabits / duration.Seconds()
+	fmt.Printf("Download completed in %.2f seconds\n", duration.Seconds())
+	fmt.Printf("Average bandwidth: %.2f Mb/s\n", mbps)
 	return nil
 }
 
@@ -102,7 +110,7 @@ func (d *Downloader) getObjectSize(ctx context.Context, presignedURL string) (in
 
 func (d *Downloader) downloadPart(ctx context.Context, presignedURL string, start, end int64, file *os.File) error {
 	pr, pw := io.Pipe()
-	fmt.Print("Downloading part ", start, "-", end, " ...")
+	fmt.Println("Downloading part ", start, "-", end, " ...")
 	defer pr.Close()
 	defer pw.Close()
 	go func() {

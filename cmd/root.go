@@ -35,7 +35,7 @@ var getCmd = &cobra.Command{
 			Parallelism: parallelism,
 			Output:      outputFile,
 		}
-		if err := d.Download(cmd.Context(), s3URL); err!=nil{
+		if err := d.Download(cmd.Context(), s3URL); err != nil {
 			fmt.Println("Failed with", err.Error())
 		}
 	},
