@@ -14,6 +14,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/xianml/s0cmd/internal/s3"
+	"github.com/xianml/s0cmd/internal/writter"
 )
 
 type Downloader struct {
@@ -61,6 +62,7 @@ func (d *Downloader) Download(ctx context.Context, presignedURL string) error {
 		start_cp := ranges[i][0]
 		end_cp := ranges[i][1]
 		part_cp := i
+
 		go func(start, end int64, part int) {
 			defer wg.Done()
 			if err := d.downloadPart(ctx, presignedURL, start, end, file); err != nil {
@@ -112,13 +114,13 @@ func (d *Downloader) downloadPart(ctx context.Context, presignedURL string, star
 	pr, pw := io.Pipe()
 	fmt.Println("Downloading part ", start, "-", end, " ...")
 	defer pr.Close()
-	defer pw.Close()
 	go func() {
 		var stderr bytes.Buffer
 		defer pw.Close()
 		cmd := exec.CommandContext(ctx, "curl", "--silent", "--show-error", "--fail", "--output", "-", "--range", fmt.Sprintf("%d-%d", start, end), presignedURL) // nolint:gosec
 		cmd.Stderr = &stderr
 		cmd.Stdout = pw
+		defer pw.Close()
 		start_t := time.Now()
 		if err := cmd.Run(); err != nil {
 			pw.CloseWithError(errors.Wrapf(err, "failed to run command: %s, stderr: %s", stringifyCmd(cmd), stderr.String()))
@@ -126,21 +128,22 @@ func (d *Downloader) downloadPart(ctx context.Context, presignedURL string, star
 		fmt.Printf("Part [%v, %v] downloaded in %.2f seconds\n", start, end, time.Since(start_t).Seconds())
 	}()
 
-	buf := make([]byte, 64*1024*1024)
+	// Goroutine 写入文件
+	errCh := make(chan error, 1)
+	go func() {
+		defer close(errCh)
+		writter := writter.NewfileWriterAt(file, start)
+		_, err := io.Copy(writter, pr)
+		if err != nil {
+			errCh <- errors.Wrap(err, "failed to write to file")
+			return
+		}
+		errCh <- nil
+	}()
 
-	for {
-		n, err := pr.Read(buf)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return errors.Wrap(err, "failed to read from pipe")
-		}
-		_, err = file.WriteAt(buf[:n], start)
-		if err != nil {
-			return errors.Wrap(err, "failed to write to writer")
-		}
-		start += int64(n)
+	// 等待写入完成
+	if err := <-errCh; err != nil {
+		return err
 	}
 	return nil
 }
