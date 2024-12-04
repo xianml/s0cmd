@@ -76,7 +76,7 @@ func (d *Downloader) Download(ctx context.Context, presignedURL string) error {
 	// Calculate MB/s
 	mbps := megabits / duration.Seconds()
 	fmt.Printf("Download completed in %.2f seconds\n", duration.Seconds())
-	fmt.Printf("Average bandwidth: %.2f Mb/s\n", mbps)
+	fmt.Printf("Average bandwidth: %.2f MB/s\n", mbps/8.0)
 	return nil
 }
 
