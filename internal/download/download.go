@@ -126,9 +126,8 @@ func (d *Downloader) downloadPart(ctx context.Context, presignedURL string, star
 		fmt.Printf("Part [%v, %v] downloaded in %.2f seconds\n", start, end, time.Since(start_t).Seconds())
 	}()
 
-	buf := make([]byte, end-start+1)
+	buf := make([]byte, 64*1024*1024)
 
-	start_t := time.Now()
 	for {
 		n, err := pr.Read(buf)
 		if err != nil {
@@ -143,7 +142,6 @@ func (d *Downloader) downloadPart(ctx context.Context, presignedURL string, star
 		}
 		start += int64(n)
 	}
-	fmt.Printf("Part [%v, %v] written to file in %.2f seconds\n", start, end, time.Since(start_t).Seconds())
 	return nil
 }
 
