@@ -35,7 +35,9 @@ var getCmd = &cobra.Command{
 			Parallelism: parallelism,
 			Output:      outputFile,
 		}
-		d.Download(cmd.Context(), s3URL)
+		if err := d.Download(cmd.Context(), s3URL); err!=nil{
+			fmt.Println("Failed with", err.Error())
+		}
 	},
 }
 
@@ -52,7 +54,7 @@ var versionCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(getCmd)
 	rootCmd.AddCommand(versionCmd)
-	getCmd.Flags().StringP("output", "o", "", "Output file name")
+	getCmd.Flags().StringP("output", "o", "output.file", "Output file name")
 	getCmd.Flags().IntP("parallelism", "p", 4, "Number of parallel downloads")
 }
 
